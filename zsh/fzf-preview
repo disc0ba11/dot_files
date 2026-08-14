@@ -1,0 +1,185 @@
+#!/usr/bin/env zsh
+
+# ============================================================
+# fzf-tab preview
+# Очищаем preview при КАЖДОМ запуске скрипта,
+# независимо от типа отображаемого объекта.
+# ============================================================
+
+# --- Очистка preview ---
+#
+# Эти escape-последовательности обрабатываются внутри
+# preview-области fzf и очищают её перед новым содержимым.
+
+printf '\033[2J'
+printf '\033_Ga=d,d=A\033\\'
+
+# Очистить preview сразу при запуске скрипта.
+
+# --- Определяем файл ---
+local file="${1:A}"
+[[ -e "$file" ]] || file="$1"
+
+# Даже если объект не существует, preview уже очищен.
+[[ -e "$file" ]] || exit 0
+
+# --- Размеры панели ---
+local -i max_w="${FZF_PREVIEW_COLUMNS:-0}"
+local -i max_h="${FZF_PREVIEW_LINES:-0}"
+
+if (( max_w == 0 || max_h == 0 )); then
+    max_w=$(tput cols 2>/dev/null || echo 80)
+    max_h=$(tput lines 2>/dev/null || echo 40)
+fi
+
+# Небольшой запас снизу, чтобы содержимое не упиралось в границу.
+(( max_h -= 2 ))
+
+(( max_w < 1 )) && max_w=1
+(( max_h < 1 )) && max_h=1
+
+
+# ============================================================
+# Изображения
+# ============================================================
+
+chafa_preview() {
+    local src="$1"
+
+    if command -v chafa >/dev/null; then
+        chafa \
+            --clear \
+            --size="${max_w}x${max_h}" \
+            --colors=256 \
+            "$src" 2>/dev/null
+
+        return $?
+    fi
+
+    return 1
+}
+
+
+# ============================================================
+# viu
+# ============================================================
+
+viu_preview() {
+    local src="$1"
+
+    if command -v viu >/dev/null; then
+        viu \
+            -b \
+            -w "$max_w" \
+            "$src" 2>/dev/null
+
+        return $?
+    fi
+
+    return 1
+}
+
+
+# ============================================================
+# Директории
+# ============================================================
+
+if [[ -d "$file" ]]; then
+    if command -v eza >/dev/null; then
+        eza \
+            -la \
+            --icons=auto \
+            --color=always \
+            "$file" 2>/dev/null | head -n 20
+    else
+        ls \
+            -la \
+            --color=always \
+            "$file" 2>/dev/null | head -n 20
+    fi
+
+    exit 0
+fi
+
+
+# ============================================================
+# Файлы
+# ============================================================
+
+if [[ -f "$file" ]]; then
+
+    mime_type=$(file --mime-type -b "$file" 2>/dev/null)
+
+    case "$mime_type" in
+
+        # ----------------------------------------------------
+        # Изображения
+        # ----------------------------------------------------
+
+        image/*)
+            chafa_preview "$file" ||
+                viu_preview "$file" ||
+                echo "⚠️ No image preview tool"
+            exit 0
+            ;;
+
+
+        # ----------------------------------------------------
+        # PDF
+        # ----------------------------------------------------
+
+        application/pdf)
+            if command -v pdftoppm >/dev/null; then
+                if chafa_preview "-" < <(
+                    pdftoppm -png -f 1 -l 1 -r 150 "$file"
+                ); then
+                    exit 0
+                fi
+                if viu_preview "-" < <(
+                    pdftoppm -png -f 1 -l 1 -r 150 "$file"
+                ); then
+                    exit 0
+                fi
+            fi
+
+            if command -v pdftotext >/dev/null; then
+                pdftotext -nopgbrk -layout -f 1 -l 1 "$file" - 2>/dev/null | head -n 30
+            else
+                echo "📄 PDF file (install poppler-utils or chafa for preview)"
+            fi
+            exit 0
+            ;;
+
+
+        # ----------------------------------------------------
+        # Текстовые файлы (только явно перечисленные типы)
+        # ----------------------------------------------------
+
+        text/*|application/json|application/xml|application/javascript)
+            if command -v bat >/dev/null; then
+                bat --style=numbers --color=always "$file" 2>/dev/null
+            else
+                cat "$file" 2>/dev/null | head -n 30
+            fi
+            exit 0
+            ;;
+
+
+        # ----------------------------------------------------
+        # Все остальные файлы (бинарные, неизвестные)
+        # ----------------------------------------------------
+
+        *)
+            if command -v trid >/dev/null; then
+                trid "$file" 2>/dev/null | head -n 10
+            else
+                file "$file" 2>/dev/null | cut -d: -f2-
+            fi
+            exit 0
+            ;;
+
+    esac
+
+else
+    echo "❌ Неизвестный объект: $file"
+fi

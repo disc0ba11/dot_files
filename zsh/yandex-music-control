@@ -1,0 +1,23 @@
+#!/bin/bash
+# Запоминаем ВСЕ аргументы, которые нам передали (например, "metadata title")
+ARGS="$@"
+
+# Перебираем все инстансы Chromium
+for player in $(playerctl --list-all | grep chromium); do
+    STATUS=$(playerctl --player="$player" status 2>/dev/null)
+    TITLE=$(playerctl --player="$player" metadata title 2>/dev/null)
+
+    # Если нашли «живой» инстанс Яндекс Музыки
+    if [[ "$STATUS" == "Playing" || "$STATUS" == "Paused" ]] && [[ "$TITLE" =~ "Яндекс" || "$TITLE" =~ "Yandex" || -n "$TITLE" ]]; then
+        # Передаем плееру абсолютно все аргументы, которые запросил пользователь
+        playerctl --player="$player" $ARGS 2>/dev/null
+        exit 0
+    fi
+done
+
+# Если живой плеер не нашли, шлем запрос в самый свежий инстанс
+LAST_PLAYER=$(playerctl --list-all | grep chromium | tail -n 1)
+if [ ! -z "$LAST_PLAYER" ]; then
+    playerctl --player="$LAST_PLAYER" $ARGS 2>/dev/null
+fi
+

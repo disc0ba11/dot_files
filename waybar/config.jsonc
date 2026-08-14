@@ -1,0 +1,178 @@
+{
+    "layer": "top",
+    "position": "top",
+    "height": 26,
+    "spacing": 4,
+    "margin-top": 0,
+    "margin-left": 0,
+    "margin-right": 0,
+    "modules-left": [
+        "hyprland/workspaces"
+    ],
+    "modules-center": [
+        "clock",
+        "custom/language"
+    ],
+    "custom/language": {
+        "exec": "~/.config/waybar/scripts/get_keyboard_layout.sh",
+        "tooltip": false,
+        "return-type": "json",
+        "restart-interval": 1,
+        "signal": 1
+    },
+    "modules-right": [
+        "custom/cpu",
+        "custom/memory",
+        "custom/temp",
+        "custom/record",
+        "tray",
+        "pulseaudio",
+        "backlight",
+        "battery",
+        "custom/sunset"
+    ],
+    "hyprland/workspaces": {
+        "format": "{name}",
+        "on-click": "activate",
+        "sort-by-number": true
+    },
+    "clock": {
+        "format": "{:%d.%m  %H:%M}",
+        "format-alt": "{:%A, %d %B %Y}",
+        "tooltip-format": "<tt><small>{calendar}</small></tt>",
+        "calendar": {
+            "mode": "month",
+            "mode-mon-col": 3,
+            "weeks-pos": "right",
+            "on-scroll": 1,
+            "iso8601": true,
+            "format": {
+                "months":    "<span color='#ffead3'><b>{}</b></span>",
+                "days":      "<span color='#ecc6d9'><b>{}</b></span>",
+                "weeks":     "<span color='#99ffdd'><b>W{}</b></span>",
+                "weekdays":  "<span color='#ffcc66'><b>{}</b></span>",
+                "today":     "<span color='#ff6699'><b><u>{}</u></b></span>"
+            }
+        },
+        "actions": {
+            "on-click-right": "mode"
+        }
+    },
+    "pulseaudio": {
+        "format": "{icon}",
+        "format-muted": "󰝟",
+        "format-icons": {
+            "headphone": "󰋋",
+            "headset": "󰋎",
+            "default": [
+                "󰕿",
+                "󰖀",
+                "󰕾"
+            ]
+        },
+        "tooltip-format": "{desc} — {volume}%",
+        "on-click": "pavucontrol",
+        "on-click-right": "swayosd-client --output-volume mute-toggle",
+        "on-scroll-up": "swayosd-client --output-volume raise",
+        "on-scroll-down": "swayosd-client --output-volume lower"
+    },
+    "backlight": {
+        "format": "{icon}",
+        "format-icons": [
+            "󰃚",
+            "󰃛",
+            "󰃜",
+            "󰃝",
+            "󰃞",
+            "󰃟",
+            "󰃠"
+        ],
+        "tooltip-format": "Brightness: {percent}%",
+        "on-scroll-up": "swayosd-client --brightness raise",
+        "on-scroll-down": "swayosd-client --brightness lower"
+    },
+    "battery": {
+        "states": {
+            "warning": 30,
+            "critical": 15
+        },
+        "format": "{icon}",
+        "format-charging": "󰂄",
+        "format-plugged": "󰚥",
+        "format-icons": [
+            "󰂎",
+            "󰁺",
+            "󰁻",
+            "󰁼",
+            "󰁽",
+            "󰁾",
+            "󰁿",
+            "󰂀",
+            "󰂁",
+            "󰂂",
+            "󰁹"
+        ],
+        "tooltip-format": "{capacity}% — {timeTo} ({power}W)"
+    },
+    "custom/cpu": {
+        "format": "{icon}",
+        "format-icons": [
+            "󰾆",
+            "󰾅",
+            "󰓅"
+        ],
+        "return-type": "json",
+        "interval": 2,
+        "exec": "python3 /home/ponkipop/hwe/scripts/wbstat.py cpu",
+        "on-click": "kitty -e btop"
+    },
+    "custom/memory": {
+        "format": "{icon}",
+        "format-icons": [
+            "󰪞",
+            "󰪟",
+            "󰪠",
+            "󰪡",
+            "󰪢",
+            "󰪣",
+            "󰪤",
+            "󰪥"
+        ],
+        "return-type": "json",
+        "interval": 2,
+        "exec": "python3 /home/ponkipop/hwe/scripts/wbstat.py mem",
+        "on-click": "kitty -e btop"
+    },
+    "custom/temp": {
+        "format": "{icon}",
+        "format-icons": [
+            "󱃃",
+            "󰔏",
+            "󱃂"
+        ],
+        "return-type": "json",
+        "interval": 4,
+        "exec": "python3 /home/ponkipop/hwe/scripts/wbstat.py temp",
+        "exec-if": "python3 /home/ponkipop/hwe/scripts/wbstat.py temp --probe",
+        "on-click": "kitty -e btop"
+    },
+    "custom/record": {
+        "format": "{}",
+        "interval": 1,
+        "exec": "pgrep -x wf-recorder >/dev/null && echo '●  REC' || echo ''",
+        "on-click": "hwe record",
+        "tooltip": false
+    },
+    "custom/sunset": {
+        "format": "{}",
+        "return-type": "json",
+        "interval": 10,
+        "signal": 8,
+        "exec": "hwe sunset status --waybar",
+        "on-click": "hwe sunset"
+    },
+    "tray": {
+        "icon-size": 14,
+        "spacing": 8
+    }
+}

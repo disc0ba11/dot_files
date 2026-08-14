@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Pachca
+TryExec=/tmp/.mount_PachcaXDKFa4/Pachca
+Exec=/tmp/.mount_PachcaXDKFa4/Pachca %U
+Icon=/tmp/.mount_PachcaXDKFa4/resources/app.asar/icons/iconpachca-app-icon.png
+Terminal=false
+Categories=Utility;
+X-GNOME-Autostart-enabled=true

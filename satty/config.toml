@@ -1,0 +1,9 @@
+[general]
+# Указываем Satty использовать системный wl-copy для удержания буфера
+copy-command = "wl-copy"
+
+# Список действий при нажатии ENTER: сохранить в буфер и закрыться
+actions-on-enter = ["save-to-clipboard", "exit"]
+
+# Список действий при нажатии ESC: просто закрыться
+actions-on-escape = ["exit"]

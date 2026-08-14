@@ -1,0 +1,85 @@
+#!/usr/bin/zsh
+
+# 1. Проверяем токен
+if [[ -z "$YANDEX_MUSIC_TOKEN" ]]; then
+    notify-send -a "Yandex Music Liker" -i dialog-error "Ошибка окружения" "Переменная YANDEX_MUSIC_TOKEN не найдена!"
+    exit 1
+fi
+
+# 2. Получаем данные текущего трека
+TITLE=$(~/.config/zsh/yandex-music-control metadata title 2>/dev/null | xargs)
+ARTIST=$(~/.config/zsh/yandex-music-control metadata artist 2>/dev/null | xargs)
+
+if [[ -z "$TITLE" ]]; then
+    notify-send -a "Yandex Music Liker" -i dialog-error "Ошибка" "Плеер не запущен или трек не найден"
+    exit 1
+fi
+
+# 3. Получаем YANDEX_UID пользователя
+ACCOUNT_RESPONSE=$(curl -s -X GET "https://api.music.yandex.net/account/status" \
+    -H "Authorization: OAuth $YANDEX_MUSIC_TOKEN")
+YANDEX_UID=$(print -f '%s' "$ACCOUNT_RESPONSE" | jq -r '.result.account.uid // empty')
+
+if [[ -z "$YANDEX_UID" || "$YANDEX_UID" == "null" ]]; then
+    notify-send -a "Yandex Music Liker" -i dialog-error "Ошибка" "Не удалось получить UID пользователя"
+    exit 1
+fi
+
+# 4. Ищем трек через API
+SEARCH_QUERY="${ARTIST} - ${TITLE}"
+ENCODED_QUERY=$(print -f '%s' "$SEARCH_QUERY" | jq -sRr @uri)
+
+SEARCH_RESPONSE=$(curl -s -X GET "https://api.music.yandex.net/search?text=${ENCODED_QUERY}&type=track&page=0&pageSize=1" \
+    -H "Authorization: OAuth $YANDEX_MUSIC_TOKEN")
+
+# Проверяем наличие ошибки
+if print -f '%s' "$SEARCH_RESPONSE" | jq -e '.error' >/dev/null; then
+    ERROR_MSG=$(print -f '%s' "$SEARCH_RESPONSE" | jq -r '.error.message // "Unknown error"')
+    notify-send -a "Yandex Music Liker" -i dialog-error "Ошибка API" "$ERROR_MSG"
+    exit 1
+fi
+
+TRACK_ID=$(print -f '%s' "$SEARCH_RESPONSE" | jq -r '.result.tracks.results[0].id // empty')
+FOUND_ARTIST=$(print -f '%s' "$SEARCH_RESPONSE" | jq -r '.result.tracks.results[0].artists | map(.name) | join(", ") // empty')
+FOUND_TITLE=$(print -f '%s' "$SEARCH_RESPONSE" | jq -r '.result.tracks.results[0].title // empty')
+
+if [[ -z "$TRACK_ID" || "$TRACK_ID" == "null" ]]; then
+    notify-send -a "Yandex Music Liker" -i dialog-warning "Не найдено" "Не удалось найти в базе: $SEARCH_QUERY"
+    exit 1
+fi
+
+# 5. Проверяем, есть ли уже трек в лайкнутых
+LIKED_RESPONSE=$(curl -s -X GET "https://api.music.yandex.net/users/${YANDEX_UID}/likes/tracks" \
+    -H "Authorization: OAuth $YANDEX_MUSIC_TOKEN")
+
+# Проверяем, не вернулась ли ошибка
+if ! echo "$LIKED_RESPONSE" | jq -e '.error' >/dev/null; then
+    # Исправленный путь: .result.library.tracks
+    IS_LIKED=$(print -f '%s' "$LIKED_RESPONSE" | jq --arg id "$TRACK_ID" '.result.library.tracks[]? | select(.id == $id) // empty')
+    if [[ -n "$IS_LIKED" ]]; then
+        notify-send -a "Yandex Music Liker" -i emblem-favorite "Уже добавлено" "Трек «${FOUND_ARTIST} — ${FOUND_TITLE}» уже в любимых!"
+        exit 0
+    fi
+fi
+
+# 6. Добавляем лайк (x-www-form-urlencoded с trackId)
+TEMP_FILE=$(mktemp)
+
+HTTP_STATUS=$(curl -s -w "%{http_code}" -X POST "https://api.music.yandex.net/users/${YANDEX_UID}/likes/tracks/add" \
+    -H "Authorization: OAuth $YANDEX_MUSIC_TOKEN" \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    --data-urlencode "trackId=${TRACK_ID}" \
+    -o "$TEMP_FILE")
+
+BODY=$(cat "$TEMP_FILE")
+rm "$TEMP_FILE"
+
+if [[ "$HTTP_STATUS" -eq 200 || "$HTTP_STATUS" -eq 201 ]]; then
+    notify-send -a "Yandex Music Liker" -i emblem-favorite "❤️ Лайк поставлен!" "${FOUND_ARTIST} — ${FOUND_TITLE}"
+elif [[ "$HTTP_STATUS" -eq 409 ]]; then
+    notify-send -a "Yandex Music Liker" -i emblem-favorite "Уже добавлено" "Трек «${FOUND_ARTIST} — ${FOUND_TITLE}» уже в любимых!"
+else
+    ERROR_MSG=$(echo "$BODY" | jq -r '.error.message // .error // "Unknown error"' 2>/dev/null)
+    [[ -z "$ERROR_MSG" ]] && ERROR_MSG="$BODY"
+    notify-send -a "Yandex Music Liker" -i dialog-error "Ошибка" "Код $HTTP_STATUS: $ERROR_MSG"
+fi
