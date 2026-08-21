@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# Файл, куда будут сыпаться все отчеты о работе клика
+LOG_FILE="$HOME/.mako-focus.log"
+
+exec {LOG_FD}>>"$LOG_FILE"
+echo -e "\n=== [КЛИК ПО УВЕДОМЛЕНИЮ $(date '+%H:%M:%S')] ===" >&$LOG_FD
+
+makoctl dismiss 2>/dev/null
+
+# Проверяем, какой аргумент прислал Mako
+echo "[LOG] Получен аргумент от Mako: '$1'" >&$LOG_FD
+
+APP_NAME_LOWER=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+TARGET_CLASS=""
+
+# Маппинг
+case "$APP_NAME_LOWER" in
+    *pachca*)             TARGET_CLASS="Pachca" ;;
+    *telegram*)           TARGET_CLASS="org.telegram.desktop" ;;
+    *firefox*)            TARGET_CLASS="firefox" ;;
+    *yandex*|*music*|*liker*)     TARGET_CLASS="YandexMusic" ;;
+    *)                    TARGET_CLASS="" ;;
+esac
+
+if [ -z "$TARGET_CLASS" ]; then
+    echo "[LOG-ERR] Не удалось сопоставить '$1' со списком классов. Скрипт остановлен." >&$LOG_FD
+    exit 1
+fi
+
+echo "[LOG] Распознан целевой класс окна: '$TARGET_CLASS'" >&$LOG_FD
+
+# Проверяем вывод hyprctl
+HYPR_OUT=$(hyprctl clients -j 2>/dev/null)
+if [ -z "$HYPR_OUT" ]; then
+    echo "[LOG-ERR] Команда 'hyprctl clients -j' вернула пустоту!" >&$LOG_FD
+    exit 1
+fi
+
+# Ищем воркспейс и монитор
+WORKSPACE_ID=$(echo "$HYPR_OUT" | jq -r ".[] | select(.class == \"$TARGET_CLASS\") | .workspace.id" | head -n 1)
+MONITOR_NAME=$(echo "$HYPR_OUT" | jq -r ".[] | select(.class == \"$TARGET_CLASS\") | .monitor" | head -n 1)
+
+echo "[LOG] Данные Hyprland: Workspace ID = '$WORKSPACE_ID', Monitor Name = '$MONITOR_NAME'" >&$LOG_FD
+
+if [ -z "$WORKSPACE_ID" ] || [ "$WORKSPACE_ID" == "null" ] || [ "$WORKSPACE_ID" == "-1" ]; then
+    echo "[LOG-ERR] Окно класса '$TARGET_CLASS' сейчас не запущено в Hyprland!" >&$LOG_FD
+    exit 1
+fi
+
+# Выполняем переключение и логируем ответы Hyprland
+echo "[LOG] Выполняем focusmonitor '$MONITOR_NAME'..." >&$LOG_FD
+RES1=$(hyprctl dispatch focusmonitor "$MONITOR_NAME" 2>&1)
+echo "      Ответ Hyprland: $RES1" >&$LOG_FD
+
+echo "[LOG] Выполняем workspace '$WORKSPACE_ID'..." >&$LOG_FD
+RES2=$(hyprctl dispatch workspace "$WORKSPACE_ID" 2>&1)
+echo "      Ответ Hyprland: $RES2" >&$LOG_FD
+
+echo "[LOG] Выполняем focuswindow 'class:$TARGET_CLASS'..." >&$LOG_FD
+RES3=$(hyprctl dispatch focuswindow "class:$TARGET_CLASS" 2>&1)
+echo "      Ответ Hyprland: $RES3" >&$LOG_FD
+
+echo "[LOG] Цепочка команд завершена." >&$LOG_FD
+
