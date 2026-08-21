@@ -26,7 +26,7 @@ if [[ -z "$YANDEX_UID" || "$YANDEX_UID" == "null" ]]; then
 fi
 
 # 4. Ищем трек через API
-SEARCH_QUERY="${ARTIST} - ${TITLE}"
+SEARCH_QUERY="${ARTIST} ${TITLE}"
 ENCODED_QUERY=$(print -f '%s' "$SEARCH_QUERY" | jq -sRr @uri)
 
 SEARCH_RESPONSE=$(curl -s -X GET "https://api.music.yandex.net/search?text=${ENCODED_QUERY}&type=track&page=0&pageSize=1" \
