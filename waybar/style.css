@@ -129,5 +129,43 @@ tooltip label {
 }
 
 #custom-language {
-    margin-left: 8px;
+    margin-left: 0px;
+}
+
+#custom-player {
+    padding: 0 10px;
+    color: @fg_normal;
+    background: transparent;
+    transition: all 0.2s ease;
+}
+
+#custom-player:hover {
+    color: @fg_bright;
+}
+
+/* Стили для Яндекс Музыки */
+#custom-player.yandex {
+    background-image: url("/home/ponkipop/.config/waybar/icons/yandex_music.svg");
+    background-repeat: no-repeat;
+    background-position: left center;
+    background-size: 14px 14px;
+    padding-left: 14px;
+}
+
+/* Стили для ВК */
+#custom-player.vk {
+    background-image: url("/home/ponkipop/.config/waybar/icons/vk.svg");
+    background-repeat: no-repeat;
+    background-position: left center;
+    background-size: 14px 14px;
+    padding-left: 14px;
+}
+
+/* Стили для Telegram */
+#custom-player.telegram {
+    background-image: url("/home/ponkipop/.config/waybar/icons/telegram.svg");
+    background-repeat: no-repeat;
+    background-position: left center;
+    background-size: 14px 14px;
+    padding-left: 14px;
 }

@@ -1,23 +1,63 @@
 #!/bin/bash
-# Запоминаем ВСЕ аргументы, которые нам передали (например, "metadata title")
-ARGS="$@"
 
-# Перебираем все инстансы Chromium
-for player in $(playerctl --list-all | grep chromium); do
-    STATUS=$(playerctl --player="$player" status 2>/dev/null)
-    TITLE=$(playerctl --player="$player" metadata title 2>/dev/null)
+# Путь к файлу, где хранится имя текущего выбранного плеера
+STATE_FILE="/tmp/selected_player"
 
-    # Если нашли «живой» инстанс Яндекс Музыки
-    if [[ "$STATUS" == "Playing" || "$STATUS" == "Paused" ]] && [[ "$TITLE" =~ "Яндекс" || "$TITLE" =~ "Yandex" || -n "$TITLE" ]]; then
-        # Передаем плееру абсолютно все аргументы, которые запросил пользователь
-        playerctl --player="$player" $ARGS 2>/dev/null
-        exit 0
+# Получаем список всех доступных плееров (chromium, firefox и т.д.)
+# Сортируем для стабильности порядка при переключении
+PLAYERS=($(playerctl --list-all | sort))
+COUNT=${#PLAYERS[@]}
+
+# Функция для записи имени плеера в файл состояния
+save_player() {
+    echo "$1" > "$STATE_FILE"
+}
+
+# Функция для чтения текущего плеера
+get_current_player() {
+    if [ -f "$STATE_FILE" ]; then
+        cat "$STATE_FILE"
+    else
+        echo ""
     fi
-done
+}
 
-# Если живой плеер не нашли, шлем запрос в самый свежий инстанс
-LAST_PLAYER=$(playerctl --list-all | grep chromium | tail -n 1)
-if [ ! -z "$LAST_PLAYER" ]; then
-    playerctl --player="$LAST_PLAYER" $ARGS 2>/dev/null
+# Если плееров вообще нет, выходим
+if [ $COUNT -eq 0 ]; then
+    echo "No players found" >&2
+    exit 0
 fi
+
+# 🔄 РЕЖИМ ПЕРЕКЛЮЧЕНИЯ (если передан аргумент "next")
+if [ "$1" == "next-player" ]; then
+    CURRENT=$(get_current_player)
+    NEXT_INDEX=0
+
+    # Ищем индекс текущего плеера в массиве
+    for i in "${!PLAYERS[@]}"; do
+        if [ "${PLAYERS[$i]}" == "$CURRENT" ]; then
+            NEXT_INDEX=$(( (i + 1) % COUNT ))
+            break
+        fi
+    done
+
+    # Сохраняем следующий плеер
+    save_player "${PLAYERS[$NEXT_INDEX]}"
+    pkill -RTMIN+5 waybar
+    exit 0
+fi
+
+# 🎮 РЕЖИМ УПРАВЛЕНИЯ (команды play-pause, next, previous и т.д.)
+ARGS="$@"
+SELECTED_PLAYER=$(get_current_player)
+
+# Проверяем, существует ли еще выбранный плеер в системе
+if [[ ! " ${PLAYERS[@]} " =~ " ${SELECTED_PLAYER} " ]]; then
+    # Если не существует или файл пуст, берем первый попавшийся из списка
+    SELECTED_PLAYER="${PLAYERS[0]}"
+    save_player "$SELECTED_PLAYER"
+fi
+
+# Отправляем команду выбранному плееру
+playerctl --player="$SELECTED_PLAYER" $ARGS 2>/dev/null
 

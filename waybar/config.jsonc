@@ -11,8 +11,17 @@
     ],
     "modules-center": [
         "clock",
+        "custom/player",
         "custom/language"
     ],
+    "custom/player": {
+        "exec": "~/.config/waybar/scripts/waybar_player.sh",
+        "return-type": "json",
+        "interval": 1,
+        "signal": 5,
+        "tooltip": false,
+        "on-click": "~/.config/zsh/yandex-music-control next-player"
+    },
     "custom/language": {
         "exec": "~/.config/waybar/scripts/get_keyboard_layout.sh",
         "tooltip": false,
