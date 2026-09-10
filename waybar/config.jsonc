@@ -10,9 +10,9 @@
         "hyprland/workspaces"
     ],
     "modules-center": [
+        "custom/language",
         "clock",
-        "custom/player",
-        "custom/language"
+        "custom/player"
     ],
     "custom/player": {
         "exec": "~/.config/waybar/scripts/waybar_player.sh",
@@ -46,8 +46,8 @@
         "sort-by-number": true
     },
     "clock": {
-        "format": "{:%d.%m  %H:%M}",
-        "format-alt": "{:%A, %d %B %Y}",
+        "format-alt": "{:%d.%m %H:%M}",
+        "format": "{:%A, %d %B %Y %H:%M}",
         "tooltip-format": "<tt><small>{calendar}</small></tt>",
         "calendar": {
             "mode": "month",
