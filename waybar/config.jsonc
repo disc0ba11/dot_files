@@ -29,7 +29,16 @@
         "restart-interval": 1,
         "signal": 1
     },
+    "custom/vpn": {
+    "format": "{}",
+    "exec": "~/.config/waybar/scripts/vpn_status.sh",
+    "interval": 2,
+    "signal": 9,
+    "hide-empty-text": true,
+    "tooltip": false
+    },
     "modules-right": [
+        "custom/vpn",
         "custom/cpu",
         "custom/memory",
         "custom/temp",
